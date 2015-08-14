@@ -19,6 +19,7 @@
 #include <linux/compat.h>
 #include <linux/uaccess.h>
 #include <linux/mount.h>
+#include <linux/aio.h>
 #include <linux/pagevec.h>
 #include <linux/random.h>
 
@@ -602,7 +603,7 @@ void f2fs_truncate(struct inode *inode, bool lock)
 int f2fs_getattr(struct vfsmount *mnt,
 			 struct dentry *dentry, struct kstat *stat)
 {
-	struct inode *inode = d_inode(dentry);
+	struct inode *inode = dentry->d_inode;
 	generic_fillattr(inode, stat);
 	stat->blocks <<= 3;
 	return 0;
@@ -641,7 +642,7 @@ static void __setattr_copy(struct inode *inode, const struct iattr *attr)
 
 int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
 {
-	struct inode *inode = d_inode(dentry);
+	struct inode *inode = dentry->d_inode;
 	struct f2fs_inode_info *fi = F2FS_I(inode);
 	int err;
 
@@ -1206,6 +1207,8 @@ noalloc:
 	return ret;
 }
 
+#define FALLOC_FL_INSERT_RANGE		0X20
+
 static long f2fs_fallocate(struct file *file, int mode,
 				loff_t offset, loff_t len)
 {
@@ -1663,7 +1666,7 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 {
-	struct inode *inode = file_inode(iocb->ki_filp);
+	struct inode *inode = iocb->ki_filp->f_mapping->host;
 
 	if (f2fs_encrypted_inode(inode) &&
 				!f2fs_has_encryption_key(inode) &&
